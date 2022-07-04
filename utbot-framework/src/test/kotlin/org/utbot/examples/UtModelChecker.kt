@@ -39,14 +39,14 @@ import kotlin.reflect.KFunction2
 import kotlin.reflect.KFunction3
 import org.junit.jupiter.api.Assertions.assertTrue
 
-internal abstract class AbstractModelBasedTest(
+internal abstract class UtModelChecker(
     testClass: KClass<*>,
     testCodeGeneration: Boolean = true,
     languagePipelines: List<CodeGenerationLanguageLastStage> = listOf(
         CodeGenerationLanguageLastStage(CodegenLanguage.JAVA),
         CodeGenerationLanguageLastStage(CodegenLanguage.KOTLIN)
     )
-) : CodeTestCaseGeneratorTest(testClass, testCodeGeneration, languagePipelines) {
+) : CodeGenerationIntegrationTest(testClass, testCodeGeneration, languagePipelines) {
     protected fun check(
         method: KFunction2<*, *, *>,
         branches: ExecutionsNumberMatcher,
@@ -137,7 +137,7 @@ internal abstract class AbstractModelBasedTest(
             previousClassLocation = classLocation
         }
         UtBotTestCaseGenerator.init(buildDir, classpath = null, dependencyPaths = System.getProperty("java.class.path"))
-        return UtBotTestCaseGenerator.generate(method, mockStrategy)
+        return UtBotTestCaseGenerator.generateTestCases(listOf(method), mockStrategy).first()
     }
 
     protected inline fun <reified T> UtExecutionResult.isException(): Boolean = exceptionOrNull() is T

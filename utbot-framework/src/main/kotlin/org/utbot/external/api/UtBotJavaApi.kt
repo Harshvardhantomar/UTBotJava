@@ -8,7 +8,7 @@ import org.utbot.framework.codegen.Junit5
 import org.utbot.framework.codegen.NoStaticMocking
 import org.utbot.framework.codegen.StaticsMocking
 import org.utbot.framework.codegen.TestFramework
-import org.utbot.framework.codegen.model.ModelBasedCodeGeneratorService
+import org.utbot.framework.codegen.model.CodeGenerator
 import org.utbot.framework.concrete.UtConcreteExecutionData
 import org.utbot.framework.concrete.UtConcreteExecutionResult
 import org.utbot.framework.concrete.UtExecutionInstrumentation
@@ -81,10 +81,9 @@ object UtBotJavaApi {
         }
 
         return withUtContext(utContext) {
-            val testGenerator = ModelBasedCodeGeneratorService().serviceProvider.apply {
+            val testGenerator = CodeGenerator().apply {
                 init(
                     classUnderTest = classUnderTest,
-                    params = mutableMapOf(),
                     testFramework = testFramework,
                     mockFramework = mockFramework,
                     codegenLanguage = codegenLanguage,
@@ -128,7 +127,7 @@ object UtBotJavaApi {
                         FileUtil.isolateClassFiles(classUnderTest.kotlin).toPath(), classpath, dependencyClassPath
                     )
                 }
-                .generateForSeveralMethods(
+                .generateTestCases(
                     methodsForAutomaticGeneration.map {
                         toUtMethod(
                             it.methodToBeTestedFromUserInput,
@@ -192,7 +191,7 @@ object UtBotJavaApi {
                     init(
                         FileUtil.isolateClassFiles(classUnderTest.kotlin).toPath(), classpath, dependencyClassPath
                     )
-                }.generateForSeveralMethods(
+                }.generateTestCases(
                     methodsForAutomaticGeneration.map {
                         toUtMethod(
                             it.methodToBeTestedFromUserInput,
