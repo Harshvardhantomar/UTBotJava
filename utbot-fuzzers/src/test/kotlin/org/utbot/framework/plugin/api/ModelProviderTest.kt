@@ -28,8 +28,8 @@ import org.utbot.framework.plugin.api.util.primitiveWrappers
 import org.utbot.framework.plugin.api.util.voidWrapperClassId
 import org.utbot.fuzzer.SimpleIdGenerator
 import org.utbot.fuzzer.defaultModelProviders
+import org.utbot.fuzzer.providers.CharToStringModelProvider.fuzzed
 import org.utbot.fuzzer.providers.EnumModelProvider
-import org.utbot.fuzzer.providers.EnumModelProvider.fuzzed
 import org.utbot.fuzzer.providers.PrimitiveDefaultsModelProvider
 import java.util.Date
 
