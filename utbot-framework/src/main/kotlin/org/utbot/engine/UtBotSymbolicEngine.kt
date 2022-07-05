@@ -1188,10 +1188,9 @@ class UtBotSymbolicEngine(
                 value = valueToExpression(value, left.field.type)
             )
 
-            // This hack solves the problem with static final fields, which are equal by reference with parameter,
-            // and with Enum fields
+            // This hack solves the problem with static final fields, which are equal by reference with parameter
             workaround(HACK) {
-                if (left.field.isFinal /* || left.field.declaringClass.isEnum */) {
+                if (left.field.isFinal) {
                     addConstraintsForFinalAssign(left.resolve(), value)
                 }
             }
