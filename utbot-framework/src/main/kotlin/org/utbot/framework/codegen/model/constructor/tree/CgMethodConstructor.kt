@@ -94,6 +94,7 @@ import org.utbot.framework.plugin.api.ClassId
 import org.utbot.framework.plugin.api.CodegenLanguage
 import org.utbot.framework.plugin.api.ConcreteExecutionFailureException
 import org.utbot.framework.plugin.api.ConstructorId
+import org.utbot.framework.plugin.api.ExecutableId
 import org.utbot.framework.plugin.api.FieldId
 import org.utbot.framework.plugin.api.MethodId
 import org.utbot.framework.plugin.api.TimeoutException
@@ -396,13 +397,23 @@ internal class CgMethodConstructor(val context: CgContext) : CgContextOwner by c
     }
 
     private fun writeWarningAboutFailureTest(exception: Throwable) {
-        +CgMultilineComment(
-            listOf(
-                "This test fails because executable under testing $currentExecutable",
-                "produces Runtime exception $exception",
-            )
-            // TODO add stacktrace JIRA:1644
+        require(currentExecutable is ExecutableId)
+        val executableName = "${currentExecutable!!.classId.name}.${currentExecutable!!.name}"
+
+        val warningLines = mutableListOf(
+            "This test fails because executable under testing $currentExecutable",
+            "produces Runtime exception $exception"
         )
+
+        for (element in exception.stackTrace) {
+            val line = element.toString()
+            warningLines += line
+            if (line.startsWith(executableName)) {
+                break
+            }
+        }
+
+        +CgMultilineComment(warningLines)
     }
 
     private fun writeWarningAboutCrash() {
