@@ -7,31 +7,70 @@ import com.esotericsoftware.kryo.io.Input
 import com.esotericsoftware.kryo.io.Output
 import com.esotericsoftware.kryo.serializers.JavaSerializer
 import com.esotericsoftware.kryo.util.DefaultInstantiatorStrategy
-import org.utbot.framework.plugin.api.TimeoutException
+import com.jetbrains.rd.framework.impl.RdSignal
+import com.jetbrains.rd.util.lifetime.Lifetime
 import de.javakaffee.kryoserializers.GregorianCalendarSerializer
 import de.javakaffee.kryoserializers.JdkProxySerializer
 import de.javakaffee.kryoserializers.SynchronizedCollectionsSerializer
 import de.javakaffee.kryoserializers.UnmodifiableCollectionsSerializer
-import java.io.ByteArrayOutputStream
-import java.io.Closeable
-import java.io.InputStream
-import java.io.OutputStream
-import java.lang.reflect.InvocationHandler
-import java.util.GregorianCalendar
 import org.objenesis.instantiator.ObjectInstantiator
 import org.objenesis.strategy.StdInstantiatorStrategy
+import org.utbot.framework.plugin.api.TimeoutException
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.io.Closeable
+import java.lang.reflect.InvocationHandler
+import java.util.*
+import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.TimeUnit
 
 /**
  * Helpful class for working with the kryo.
  */
 class KryoHelper internal constructor(
-    inputStream: InputStream,
-    private val outputStream: OutputStream
+    private val lifetime: Lifetime,
+    inputSignal: RdSignal<ByteArray>,
+    private val outputSignal: RdSignal<ByteArray>,
+    private val doLog: (String) -> Unit = {_ -> }
 ) : Closeable {
-    private val temporaryBuffer = ByteArrayOutputStream()
+    private val outputBuffer = ByteArrayOutputStream()
+    private val queue = LinkedBlockingQueue<ByteArray>()
+    private var lastInputStream = ByteArrayInputStream(ByteArray(0))
+    private val kryoInput = object : Input(1024 * 1024) {
+        override fun fill(buffer: ByteArray, offset: Int, count: Int): Int {
+            var already = 0
 
-    private val kryoOutput = Output(temporaryBuffer)
-    private val kryoInput = Input(inputStream)
+            doLog("fill request: offset - $offset, count - $count")
+
+            while (already < count) {
+                val readed = lastInputStream.read(buffer, offset + already, count - already)
+
+                doLog("in fill readed is: $readed")
+
+                if (readed == -1) {
+                    val lastReceived = queue.poll(1, TimeUnit.SECONDS)
+                        ?: return already.apply { doLog("returning fill request: already - $already") } // TODO -1?
+
+                    lastInputStream = lastReceived.inputStream()
+
+                    continue
+                } else {
+                    already += readed
+                }
+            }
+
+            return already.apply { doLog("returning fill request: already - $already") } // todo -1
+        }
+    }
+
+    init {
+        inputSignal.advise(lifetime) {
+            doLog("received chunk: size - ${it.size}, hash - ${it.contentHashCode()}")
+            queue.put(it)
+        }
+    }
+
+    private val kryoOutput = Output(outputBuffer)
 
     private val sendKryo: Kryo = TunedKryo()
     private val receiveKryo: Kryo = TunedKryo()
@@ -57,13 +96,17 @@ class KryoHelper internal constructor(
             sendKryo.writeClassAndObject(kryoOutput, cmd)
             kryoOutput.flush()
 
-            temporaryBuffer.writeTo(outputStream)
-            outputStream.flush()
+            lifetime.executeIfAlive { // todo shall i if not alive?
+                val toSend = outputBuffer.toByteArray()
+
+                doLog("sending chunk: size - ${toSend.size}, hash - ${toSend.contentHashCode()}")
+                outputSignal.fire(toSend)
+            }
         } catch (e: Exception) {
             throw WritingToKryoException(e)
         } finally {
             kryoOutput.reset()
-            temporaryBuffer.reset()
+            outputBuffer.reset()
         }
     }
 
@@ -84,7 +127,6 @@ class KryoHelper internal constructor(
     override fun close() {
         kryoInput.close()
         kryoOutput.close()
-        outputStream.close()
     }
 }
 
