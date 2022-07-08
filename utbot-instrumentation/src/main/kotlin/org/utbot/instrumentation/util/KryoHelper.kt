@@ -48,7 +48,7 @@ class KryoHelper internal constructor(
                 doLog("in fill readed is: $readed")
 
                 if (readed == -1) {
-                    val lastReceived = queue.poll(1, TimeUnit.SECONDS)
+                    val lastReceived = queue.poll(100, TimeUnit.MILLISECONDS)
                         ?: return already.apply { doLog("returning fill request: already - $already") } // TODO -1?
 
                     lastInputStream = lastReceived.inputStream()

@@ -244,7 +244,7 @@ class ConcreteExecutor<TIResult, TInstrumentation : Instrumentation<TIResult>> p
                     val processToMain = RdSignal<ByteArray>().static(2).apply { async = true }
                     val isAvailableChildAvailable = RdSignal<Unit>().static(3).apply { async = true }
 
-                    val kryoHelper = KryoHelper(lifetime, processToMain, mainToProcess) { logger.debug(it) }
+                    val kryoHelper = KryoHelper(lifetime, processToMain, mainToProcess) { logger.trace(it) }
 
                     classLoader?.let { kryoHelper.setKryoClassLoader(it) }
                     protocol.scheduler.invokeOrQueue {
